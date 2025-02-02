@@ -1,0 +1,72 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+requires_python = ">=3.10"
+
+
+
+[project]
+name = "bcc"
+version = "1.2.28"
+authors = [{name = "Matt Krueger", email = "mkrueger@rstms.net"}]
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+keywords = ["bcc"]
+classifiers = [
+  "Intended Audience :: Developers",
+
+  "Natural Language :: English", 
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10"
+]
+dynamic = ["description"] 
+
+dependencies = [
+  "arrow",
+  "beautifulsoup4",
+  "click",
+  "selenium",
+  "pyyaml",
+  "requests",
+  "flask"
+]
+
+[tool.flit.module]
+name = "bcc"
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "bump2version",
+  "coverage",
+  "devtools",
+  "isort",
+  "flake8",
+  "flake8-length",
+  "pdbpp",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-datadir",
+  "python-box",
+  "toml"
+]
+docs = [
+  "m2r2",
+  "sphinx",
+  "sphinx-click",
+  "pallets-sphinx-themes"
+]
+
+[project.urls]
+Home = "https://github.com/rstms/bcc"
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+[tool.pytest]
+collect_ignore = ['setup.py']
+
+
+[project.scripts]
+bcc = "bcc:bcc"
