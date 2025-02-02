@@ -48,7 +48,8 @@ def test_profile_create(shared_datadir, keypair):
 
 def test_profile_driver():
     driver_bin = settings.WEBDRIVER_BINARY
-    assert Path(driver_bin).is_file()
+    if driver_bin:
+        assert Path(driver_bin).is_file()
     session = Session()
     session._load_driver()
     assert session.driver

@@ -3,19 +3,25 @@
 import re
 import socket
 import subprocess
+from enum import Enum
 from pathlib import Path
+from typing import Any
 
+from pydantic import validate_call
 from starlette.config import Config
 from starlette.datastructures import Secret
 
-# get flags
-OPTIONAL_READ_FILE = 1
-VALIDATE_PEM_CERTIFICATE_FILE = 2
-VALIDATE_PEM_PRIVATE_KEY_FILE = 3
-VALIDATE_PEM_PUBLIC_KEY_FILE = 4
-DECODE_SECRET = 5
 
-default_webdriver_binary = subprocess.check_output("which geckodriver || true", shell=True, text=True).strip()
+class Get(Enum):
+    OPTIONAL_READ_FILE = 1
+    VALIDATE_PEM_CERTIFICATE_FILE = 2
+    VALIDATE_PEM_PRIVATE_KEY_FILE = 3
+    VALIDATE_PEM_PUBLIC_KEY_FILE = 4
+    DECODE_SECRET = 5
+
+
+default_webdriver_bin = subprocess.check_output("which geckodriver 2>/dev/null || true", shell=True, text=True).strip()
+default_firefox_bin = subprocess.check_output("which firefox 2>/dev/null || true", shell=True, text=True).strip()
 
 config = Config(".env")
 
@@ -28,7 +34,7 @@ API_KEY = config("API_KEY", cast=Secret)
 CALDAV_URL = config(
     "CALDAV_URL", cast=str, default="http://caldav." + ".".join(socket.getfqdn().split(".")[1:]) + "/baikal"
 )
-CALDAV_URL = config("BCC_URL", cast=str, default="http://mabctl." + ".".join(socket.getfqdn().split(".")[1:]) + "/bcc")
+BCC_URL = config("BCC_URL", cast=str, default="http://mabctl." + ".".join(socket.getfqdn().split(".")[1:]) + "/bcc")
 
 CLIENT_CERT = config("CLIENT_CERT", cast=str, default=str(Path.home() / "certs" / "client.pem"))
 CLIENT_KEY = config("CLIENT_KEY", cast=str, default=str(Path.home() / "certs" / "client.key"))
@@ -39,9 +45,11 @@ PROFILE_NAME = config("PROFILE_NAME", cast=str, default="default")
 PROFILE_DIR = config("PROFILE_DIR", cast=str, default=str(Path.home() / ".cache" / "bcc" / "profile"))
 PROFILE_CREATE_TIMEOUT = config("PROFILE_CREATE_TIMEOUT", cast=int, default=30)
 PROFILE_STABILIZE_TIME = config("PROFILE_STABILIZE_TIME", cast=int, default=2)
-WEBDRIVER_BINARY = config("WEBDRIVER_BINARY", cast=str, default=default_webdriver_binary)
+WEBDRIVER_BIN = config("WEBDRIVER_BIN", cast=str, default=default_webdriver_bin)
+FIREFOX_BIN = config("FIREFOX_BIN", cast=str, default=default_firefox_bin)
 
 
+HEADLESS = config("HEADLESS", cast=bool, default=True)
 DEBUG = config("DEBUG", cast=bool, default=False)
 LOG_LEVEL = config("LOG_LEVEL", cast=str, default="WARNING")
 VERBOSE = config("VERBOSE", cast=bool, default=False)
@@ -108,21 +116,22 @@ def validate_pem_file(filename: str, pem_type: str):
                     raise ValueError(f"{filename} is not a key")
 
 
-def get(value, name, *flags):
+@validate_call
+def get(value: Any | None, name: str, *flags: Get) -> Any:
     """if value is None, set it from the named setting, performing post-processing if flags are set"""
     if value is None:
         value = globals()[name]
     for flag in flags:
-        if flag == DECODE_SECRET:
+        if flag == Get.DECODE_SECRET:
             if isinstance(value, Secret):
                 value = str(value)
-        elif flag == OPTIONAL_READ_FILE:
+        elif flag == Get.OPTIONAL_READ_FILE:
             value = read_secret(value)
-        elif flag == VALIDATE_PEM_CERTIFICATE_FILE:
+        elif flag == Get.VALIDATE_PEM_CERTIFICATE_FILE:
             validate_pem_file(value, "certificate")
-        elif flag == VALIDATE_PEM_PRIVATE_KEY_FILE:
+        elif flag == Get.VALIDATE_PEM_PRIVATE_KEY_FILE:
             validate_pem_file(value, "privkey")
-        elif flag == VALIDATE_PEM_PUBLIC_KEY_FILE:
+        elif flag == Get.VALIDATE_PEM_PUBLIC_KEY_FILE:
             validate_pem_file(value, "pubkey")
         else:
             raise ValueError(f"unrecognized settings flag: {flag}")

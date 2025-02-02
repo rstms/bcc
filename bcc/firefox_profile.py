@@ -94,6 +94,7 @@ class Profile:
 
     def create(self):
         self.logger.info("Creating profile...")
+        breakpoint()
         run(f"{settings.FIREFOX_BIN} --headless --createprofile '{self.name} {self.dir}'", env=self.mkenv())
 
         proc = subprocess.Popen(

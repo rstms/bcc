@@ -2,6 +2,9 @@
 
 import logging
 from typing import Any, Dict, List, Tuple
+from pathlib import Path
+import os
+from pprint import pformat
 
 import arrow
 from bs4 import BeautifulSoup
@@ -78,10 +81,21 @@ class Session:
 
         if not self.driver:
             options = webdriver.FirefoxOptions()
+            if settings.FIREFOX_BIN:
+                options.binary_location=settings.FIREFOX_BIN
+                bindir=Path(settings.FIREFOX_BIN).parent
+                if str(bindir) not in os.environ['PATH'].split(':'):
+                    os.environ["PATH"] = str(bindir) + ":" + os.environ['PATH']
+            if settings.HEADLESS:
+                options.add_argument('--headless')
             options.profile = webdriver.FirefoxProfile(settings.PROFILE_DIR)
             options.profile.set_preference("security.default_personal_cert", "Select Automatically")
-            service = webdriver.FirefoxService(executable_path=settings.WEBDRIVER_BINARY)
+            kwargs={}
+            if settings.WEBDRIVER_BIN:
+                kwargs['executable_path'] = settings.WEBDRIVER_BIN
+            service = webdriver.FirefoxService(**kwargs)
             self.driver = webdriver.Firefox(options=options, service=service)
+            self.logger.debug(pformat(self.driver.capabilities))
 
     def shutdown(self):
         self.logger.info("shutdown")
