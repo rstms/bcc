@@ -38,7 +38,7 @@ async def required_headers(
     x_admin_password: Annotated[str, Header()],
     x_api_key: Annotated[str, Header()],
 ):
-    if x_api_key != app.state.session.api_key:
+    if x_api_key != app.state.api_key:
         raise HTTPException(status_code=401, detail="invalid API key")
     if not x_admin_username:
         raise HTTPException(status_code=401, detail="missing username")
@@ -51,6 +51,7 @@ async def required_headers(
 async def lifespan(app: FastAPI):
     log.setLevel(settings.LOG_LEVEL)
     log.info(f"bcc v{__version__} startup")
+    app.state.api_key = str(settings.API_KEY)
     app.state.startup_time = arrow.now()
     app.state.session = Session()
     yield

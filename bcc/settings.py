@@ -2,6 +2,7 @@
 
 import re
 import socket
+import subprocess
 from pathlib import Path
 
 from starlette.config import Config
@@ -13,6 +14,8 @@ VALIDATE_PEM_CERTIFICATE_FILE = 2
 VALIDATE_PEM_PRIVATE_KEY_FILE = 3
 VALIDATE_PEM_PUBLIC_KEY_FILE = 4
 DECODE_SECRET = 5
+
+default_webdriver_binary = subprocess.check_output("which geckodriver", shell=True, text=True).strip()
 
 config = Config(".env")
 
@@ -35,6 +38,7 @@ PROFILE_NAME = config("PROFILE_NAME", cast=str, default="default")
 PROFILE_DIR = config("PROFILE_DIR", cast=str, default=str(Path.home() / ".cache" / "bcc" / "profile"))
 PROFILE_CREATE_TIMEOUT = config("PROFILE_CREATE_TIMEOUT", cast=int, default=30)
 PROFILE_STABILIZE_TIME = config("PROFILE_STABILIZE_TIME", cast=int, default=2)
+WEBDRIVER_BINARY = config("WEBDRIVER_BINARY", cast=str, default=default_webdriver_binary)
 
 
 DEBUG = config("DEBUG", cast=bool, default=False)

@@ -9,7 +9,6 @@ from pydantic import validate_call
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver.support.ui import Select
 
 from . import settings
@@ -77,10 +76,11 @@ class Session:
 
     def _load_driver(self):
         if not self.driver:
-            self.firefox_options = webdriver.FirefoxOptions()
-            self.firefox_options.profile = FirefoxProfile(settings.PROFILE_DIR)
-            self.firefox_options.profile.set_preference("security.default_personal_cert", "Select Automatically")
-            self.driver = webdriver.Firefox(options=self.firefox_options)
+            options = webdriver.FirefoxOptions()
+            options.profile = webdriver.FirefoxProfile(settings.PROFILE_DIR)
+            options.profile.set_preference("security.default_personal_cert", "Select Automatically")
+            service = webdriver.FirefoxService(executable_path=settings.WEBDRIVER_BINARY)
+            self.driver = webdriver.Firefox(options=options, service=service)
 
     def shutdown(self):
         self.logger.info("shutdown")

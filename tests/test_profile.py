@@ -1,7 +1,10 @@
 import logging
+from pathlib import Path
 
 import pytest
 
+from bcc import settings
+from bcc.browser import Session
 from bcc.firefox_profile import Profile, countFiles, run
 
 logger = logging.getLogger(__name__)
@@ -41,3 +44,15 @@ def test_profile_create(shared_datadir, keypair):
         logger.info(f"after[{i}]: {cert}")
 
     assert len(after) == len(before) + 1
+
+
+def test_profile_driver():
+    driver_bin = settings.WEBDRIVER_BINARY
+    assert Path(driver_bin).is_file()
+    session = Session()
+    session._load_driver()
+    assert session.driver
+    session.driver.get("https://duckduckgo.com")
+    assert session.driver.title
+    assert "DuckDuckGo" in session.driver.title
+    session.shutdown()

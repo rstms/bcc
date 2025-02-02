@@ -59,7 +59,7 @@ class TestServer:
             app=self.app,
             host=settings.ADDRESS,
             port=settings.PORT,
-            log_level=settings.log_level.lower(),
+            log_level=settings.LOG_LEVEL.lower(),
             loop="asyncio",
             lifespan="on",
         )
