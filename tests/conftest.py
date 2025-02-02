@@ -3,10 +3,10 @@
 import asyncio
 import os
 import socket
-import subprocess
 import time
 from threading import Thread
 
+import psutil
 import pytest
 
 from bcc import settings
@@ -17,10 +17,7 @@ from bcc.models import Book, User
 LISTEN_TIMEOUT = 5
 
 TEST_PORT = 8001
-TEST_CALDAV_URL = os.environ["TEST_CALDAV_URL"]
 TEST_API_KEY = os.environ.get("TEST_API_KEY", "test_api_key")
-TEST_CLIENT_CERT = "certs/client.pem"
-TEST_CLIENT_KEY = "certs/client.key"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -32,6 +29,9 @@ def test_env():
     finally:
         for k, v in env.items():
             os.environ[k] = v
+    settings.ADDRESS = "127.0.0.1"
+    settings.PORT = TEST_PORT
+    settings.API_KEY = TEST_API_KEY
 
 
 @pytest.fixture(scope="session")
@@ -46,9 +46,9 @@ def headers():
 
 class TestServer:
     def __init__(self, app):
-        settings.ADDRESS = "127.0.0.1"
-        settings.PORT = TEST_PORT
-        settings.LOG_LEVEL = "DEBUG"
+
+        self.host = "127.0.0.1"
+        self.port = TEST_PORT
         self.app = app
         self._server = None
 
@@ -57,9 +57,9 @@ class TestServer:
 
         config = uvicorn.Config(
             app=self.app,
-            host=settings.ADDRESS,
-            port=settings.PORT,
-            log_level=settings.LOG_LEVEL.lower(),
+            host=self.host,
+            port=self.port,
+            log_level="debug",
             loop="asyncio",
             lifespan="on",
         )
@@ -84,11 +84,14 @@ async def listening(host, port):
             connected = True
 
 
+def listening_tcp_ports():
+    return [conn.laddr.port for conn in psutil.net_connections(kind="tcp") if conn.status == "LISTEN"]
+
+
 @pytest.fixture(scope="session")
 async def test_server():
-    proc = subprocess.run(f"netstat -lnt | grep -q {TEST_PORT}", shell=True)
     use_existing = "USE_EXISTING_SERVER" in os.environ
-    if proc.returncode == 0:
+    if int(TEST_PORT) in listening_tcp_ports():
         assert use_existing, f"server running on port {TEST_PORT}; set USE_EXISTING_SERVER to use"
         yield True
         return
@@ -110,12 +113,7 @@ def test_url():
 
 @pytest.fixture(scope="session")
 def client(test_server, test_url):
-    username = os.environ["BCC_USERNAME"]
-    password = os.environ["BCC_PASSWORD"]
-    cert = os.environ["BCC_CERT"]
-    key = os.environ["BCC_KEY"]
-    api_key = TEST_API_KEY
-    client = API(test_url, username, password, cert, key, api_key)
+    client = API()
     yield client
 
 

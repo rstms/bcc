@@ -50,7 +50,8 @@ dev = [
   "pytest-datadir",
   "pytest-asyncio",
   "python-box",
-  "toml"
+  "toml",
+  "psutil"
 ]
 docs = [
   "m2r2",

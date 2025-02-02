@@ -15,7 +15,7 @@ VALIDATE_PEM_PRIVATE_KEY_FILE = 3
 VALIDATE_PEM_PUBLIC_KEY_FILE = 4
 DECODE_SECRET = 5
 
-default_webdriver_binary = subprocess.check_output("which geckodriver", shell=True, text=True).strip()
+default_webdriver_binary = subprocess.check_output("which geckodriver || true", shell=True, text=True).strip()
 
 config = Config(".env")
 
@@ -28,6 +28,7 @@ API_KEY = config("API_KEY", cast=Secret)
 CALDAV_URL = config(
     "CALDAV_URL", cast=str, default="http://caldav." + ".".join(socket.getfqdn().split(".")[1:]) + "/baikal"
 )
+CALDAV_URL = config("BCC_URL", cast=str, default="http://mabctl." + ".".join(socket.getfqdn().split(".")[1:]) + "/bcc")
 
 CLIENT_CERT = config("CLIENT_CERT", cast=str, default=str(Path.home() / "certs" / "client.pem"))
 CLIENT_KEY = config("CLIENT_KEY", cast=str, default=str(Path.home() / "certs" / "client.key"))

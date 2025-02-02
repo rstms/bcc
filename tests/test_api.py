@@ -2,6 +2,7 @@ from bcc.models import User
 
 
 def test_api_status(client):
+    breakpoint()
     status = client.status()
     assert isinstance(status, dict)
     print(status)

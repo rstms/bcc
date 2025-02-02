@@ -43,7 +43,8 @@ def output(obj):
 @click.option("-d", "--debug", is_eager=True, envvar="DEBUG", is_flag=True, callback=_ehandler, help="debug mode")
 @click.option("-u", "--username", help="username (default: admin)")
 @click.option("-p", "--password", help="password")
-@click.option("-U", "--url", help="caldav server URL")
+@click.option("--caldav-url", help="caldav server URL")
+@click.option("--bcc-url", help="bcc server URL")
 @click.option("-l", "--log-level", help="server log level (default: WARNING)")
 @click.option("-c", "--cert", help="cient certificate file")
 @click.option("-k", "--key", help="client certificate key file")
@@ -56,7 +57,7 @@ def output(obj):
     help="configure shell completion",
 )
 @click.pass_context
-def bcc(ctx, debug, username, password, url, cert, key, api_key, log_level, shell_completion):
+def bcc(ctx, debug, username, password, caldav_url, bcc_url, cert, key, api_key, log_level, shell_completion):
     """bcc - bcc control console"""
 
     if debug is not None:
@@ -65,8 +66,10 @@ def bcc(ctx, debug, username, password, url, cert, key, api_key, log_level, shel
         settings.USERNAME = username
     if password is not None:
         settings.PASSWORD = password
-    if url is not None:
-        settings.CALDAV_URL = url
+    if caldav_url is not None:
+        settings.CALDAV_URL = caldav_url
+    if bcc_url is not None:
+        settings.BCC_URL = bcc_url
     if cert is not None:
         settings.CLIENT_CERT = cert
     if key is not None:
@@ -189,6 +192,7 @@ def uptime(ctx):
 @click.pass_context
 def server(ctx):
     """API server"""
+
     uvicorn.run(
         "bcc:app",
         host=settings.ADDRESS,

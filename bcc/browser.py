@@ -75,6 +75,7 @@ class Session:
         self.profile.AddCert(settings.CLIENT_CERT, settings.CLIENT_KEY)
 
     def _load_driver(self):
+
         if not self.driver:
             options = webdriver.FirefoxOptions()
             options.profile = webdriver.FirefoxProfile(settings.PROFILE_DIR)
