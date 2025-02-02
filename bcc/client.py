@@ -38,15 +38,15 @@ class API:
 
         self.session = requests.Session()
         self.session.cert = (
-            settings.get(client_cert, "CLIENT_CERT", settings.VALIDATE_PEM_CERTIFICATE_FILE),
-            settings.get(client_key, "CLIENT_KEY", settings.VALIDATE_PEM_PRIVATE_KEY_FILE),
+            settings.get(client_cert, "CLIENT_CERT", settings.Get.VALIDATE_PEM_CERTIFICATE_FILE),
+            settings.get(client_key, "CLIENT_KEY", settings.Get.VALIDATE_PEM_PRIVATE_KEY_FILE),
         )
         self.session.headers["X-Admin-Username"] = settings.get(admin_username, "ADMIN_USERNAME")
         self.session.headers["X-Admin-Password"] = settings.get(
-            admin_password, "ADMIN_PASSWORD", settings.DECODE_SECRET, settings.OPTIONAL_READ_FILE
+            admin_password, "ADMIN_PASSWORD", settings.Get.DECODE_SECRET, settings.Get.OPTIONAL_READ_FILE
         )
         self.session.headers["X-Api-Key"] = settings.get(
-            api_key, "API_KEY", settings.DECODE_SECRET, settings.OPTIONAL_READ_FILE
+            api_key, "API_KEY", settings.Get.DECODE_SECRET, settings.Get.OPTIONAL_READ_FILE
         )
 
     def _parse_response(self, response):
