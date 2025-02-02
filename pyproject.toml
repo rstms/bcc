@@ -45,7 +45,6 @@ dev = [
   "flake8-length",
   "pdbpp",
   "pytest",
-  "pytest-asyncio",
   "pytest-datadir",
   "python-box",
   "toml"
