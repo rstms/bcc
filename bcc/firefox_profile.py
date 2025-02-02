@@ -1,11 +1,19 @@
 # firefox profile
 
 import logging
+import os
 import shlex
 import subprocess
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
+
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from pydantic import validate_call
+
+from . import settings
 
 
 def countFiles(dir):
@@ -33,43 +41,64 @@ def run(cmd, **kwargs):
     return subprocess.run(shlex.split(cmd), **kwargs)
 
 
-def commonName(cert):
-    with tempfile.NamedTemporaryFile(suffix=".pem") as tf:
-        pemCert = cert
-        if Path(cert).suffix == ".p12":
-            run(f"openssl pkcs12 -in {str(cert)} -nokeys -out {tf.name} -password pass:")
-            pemCert = tf.name
-        cmd = f"openssl x509 -in {pemCert} -noout -subject"
-        out = subprocess.check_output(shlex.split(cmd))
-        out = out.decode().strip()
-        if out.lower().startswith("subject=cn"):
-            prefix, _, name = out.partition("=CN")
-            name = name.strip(" =")
-            return name
-        raise RuntimeError(f"Failed to parse subject CN from certificate {cert} {repr(out)}")
+def commonName(filename):
+    certificate_file = Path(filename)
+    suffix = certificate_file.suffix
+    if suffix == ".pem":
+        data = certificate_file.read_bytes()
+        certificate = x509.load_pem_x509_certificate(data, default_backend())
+        cn = certificate.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+        if cn:
+            return cn[0].value
+    elif suffix == ".p12":
+        raise RuntimeError(f"cannot read pkcs12 cert: {filename}")
+        # run(f"openssl pkcs12 -in {str(cert)} -nokeys -out {tf.name} -password pass:")
+        #    pemCert = tf.name
+    else:
+        raise RuntimeError(f"unknown certificate format: {filename}")
+    raise RuntimeError(f"Failed to parse subject CN from certificate {filename}")
 
 
 class Profile:
 
-    def __init__(self, name, dir, create_timeout, stabilize_time, logger=None):
-        if logger is None:
-            logger = __name__
+    @validate_call
+    def __init__(
+        self,
+        *,
+        name: str | None = None,
+        dir: str | None = None,
+        create_timeout: int | None = None,
+        stabilize_time: int | None = None,
+        logger: Any | None = None,
+    ):
+
         if isinstance(logger, str):
             self.logger = logging.getLogger(logger)
-        else:
+        elif logger is not None:
             self.logger = logger
-        self.name = name
-        self.dir = Path(dir)
-        self.create_timeout = create_timeout
-        self.stabilize_time = stabilize_time
+        else:
+            self.logger = logging.getLogger(__name__)
+
+        self.name = settings.get(name, "PROFILE_NAME")
+        self.dir = Path(settings.get(dir, "PROFILE_DIR"))
+        self.create_timeout = settings.get(create_timeout, "PROFILE_CREATE_TIMEOUT")
+        self.stabilize_time = settings.get(stabilize_time, "PROFILE_STABILIZE_TIME")
         self.dir.mkdir(parents=True, exist_ok=True)
         if countFiles(self.dir) < 3:
             self.create()
 
+    def mkenv(self):
+        env = {k: v for k, v in os.environ.items()}
+        env["DISPLAY"] = settings.DISPLAY
+        return env
+
     def create(self):
         self.logger.info("Creating profile...")
-        run(f"/usr/bin/firefox --headless --createprofile '{self.name} {self.dir}'")
-        proc = subprocess.Popen(shlex.split(f"/usr/bin/firefox --headless --profile {self.dir} --first-startup"))
+        run(f"{settings.FIREFOX_BIN} --headless --createprofile '{self.name} {self.dir}'", env=self.mkenv())
+
+        proc = subprocess.Popen(
+            shlex.split(f"{settings.FIREFOX_BIN} --headless --profile {self.dir} --first-startup"), env=self.mkenv()
+        )
         timeout_tick = time.time() + self.create_timeout
         stable = 0
         lastcount = 0

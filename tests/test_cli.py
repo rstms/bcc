@@ -7,9 +7,9 @@ import shlex
 import pytest
 from click.testing import CliRunner
 
-import baikalctl as baikalctl_module
-from baikalctl import __version__, bcc
-from baikalctl.models import Book, User
+import bcc as bcc_module
+from bcc import __version__, bcc
+from bcc.models import Book, User
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def run(test_url, test_api_key):
 
 
 def test_cli_version():
-    assert baikalctl_module.__name__ == "baikalctl"
+    assert bcc_module.__name__ == "bcc"
     assert __version__
     assert isinstance(__version__, str)
 
@@ -105,3 +105,31 @@ def test_cli_books(run, client, testuser, testbook):
 def test_cli_rmbook(run, client, testuser, testbook):
     result = run(["rmbook", testuser.username, testbook.token])
     assert result == dict(request="delete address book", success=True, message=f"deleted_book: {testbook.token}")
+
+
+def test_cli_exception(run):
+
+    cmd = ["--shell-completion", "and_now_for_something_completely_different"]
+
+    with pytest.raises(RuntimeError) as exc:
+        result = run(cmd)
+    assert isinstance(exc.value, RuntimeError)
+
+    # example of testing for expected exception
+    result = run(cmd, assert_exception=RuntimeError)
+    assert result.exception
+    assert result.exc_info[0] == RuntimeError
+    assert result.exception.args[0] == "cannot determine shell"
+
+    with pytest.raises(AssertionError) as exc:
+        result = run(cmd, assert_exception=ValueError)
+    assert exc
+
+
+def test_cli_exit(run):
+    result = run(["--help"], assert_exit=None)
+    assert result
+    result = run(["--help"], assert_exit=0)
+    assert result
+    # with pytest.raises(AssertionError):
+    #    run(["--help"], assert_exit=-1)

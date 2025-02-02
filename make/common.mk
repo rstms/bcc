@@ -98,8 +98,6 @@ ifndef virtualenv
   $(if $(virtualenv),,$(error virtualenv not detected))
 endif
 
-make = make --no-print-directory 
-
 # github repo latest release version
 
 # make clean targets

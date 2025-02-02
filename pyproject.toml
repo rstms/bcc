@@ -28,7 +28,9 @@ dependencies = [
   "selenium",
   "pyyaml",
   "requests",
-  "flask"
+  "fastapi",
+  "uvicorn",
+  "cryptography"
 ]
 
 [tool.flit.module]
@@ -46,6 +48,7 @@ dev = [
   "pdbpp",
   "pytest",
   "pytest-datadir",
+  "pytest-asyncio",
   "python-box",
   "toml"
 ]

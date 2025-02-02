@@ -2,8 +2,7 @@ import logging
 
 import pytest
 
-from baikalctl import settings
-from baikalctl.firefox_profile import Profile, countFiles, run
+from bcc.firefox_profile import Profile, countFiles, run
 
 logger = logging.getLogger(__name__)
 logger.setLevel("DEBUG")
@@ -25,7 +24,7 @@ def test_profile_create(shared_datadir, keypair):
     assert pem.is_file()
     assert key.is_file()
     dir = shared_datadir / "profile"
-    profile = Profile("test", dir, settings.PROFILE_CREATE_TIMEOUT, settings.PROFILE_STABILIZE_TIME, logger)
+    profile = Profile(dir=str(dir), logger=logger)
     assert dir.is_dir()
     assert dir == profile.dir
     assert len(list(dir.glob("*"))) > 3

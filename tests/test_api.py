@@ -1,4 +1,4 @@
-from baikalctl.models import User
+from bcc.models import User
 
 
 def test_api_status(client):

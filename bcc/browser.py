@@ -1,4 +1,4 @@
-# baikalctl browser puppeteer
+# baikal controller browser puppeteer
 
 import logging
 from typing import Any, Dict, List, Tuple
@@ -12,6 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver.support.ui import Select
 
+from . import settings
 from .firefox_profile import Profile
 from .models import (
     VALID_TOKEN_CHARS,
@@ -52,64 +53,18 @@ class UnexpectedServerResponse(BrowserException):
     pass
 
 
-class SessionConfig:
-    debug = False
-    log_level = "WARNING"
-    logger = __name__
-    create_profile = False
-
-    @validate_call
-    def __init__(  # noqa: C901
-        self,
-        *,
-        url: str | None = None,
-        cert: str | None = None,
-        key: str | None = None,
-        profile_name: str | None = None,
-        profile_dir: str | None = None,
-        profile_create_timeout: int | None = None,
-        profile_stabilize_time: int | None = None,
-        log_level: str | None = None,
-        logger: str | Any = None,
-        debug: bool | None = None,
-        api_key: str | None = None,
-    ):
-        if url is not None:
-            self.__class__.url = url
-        if cert is not None:
-            self.__class__.cert = cert
-        if key is not None:
-            self.__class__.key = key
-        if profile_name is not None:
-            self.__class__.profile_name = profile_name
-        if profile_dir is not None:
-            self.__class__.profile_dir = profile_dir
-        if profile_create_timeout is not None:
-            self.__class__.profile_create_timeout = profile_create_timeout
-        if profile_stabilize_time is not None:
-            self.__class__.profile_stabilize_time = profile_stabilize_time
-        if logger is not None:
-            self.__class__.logger = logger
-        if log_level is not None:
-            self.__class__.log_level = log_level
-        if debug is not None:
-            self.__class__.debug = debug
-        if api_key is not None:
-            self.__class__.api_key = api_key
-
-
 class Session:
 
-    def __init__(self, **kwargs):
+    def __init__(self, logger=None):
 
-        config = SessionConfig(**kwargs)
-
-        if isinstance(config.logger, str):
-            self.logger = logging.getLogger(config.logger)
+        if isinstance(logger, str):
+            self.logger = logging.getLogger(logger)
+        elif logger is not None:
+            self.logger = logger
         else:
-            self.logger = config.logger
+            self.logger = logging.getLogger(__name__)
 
-        self.logger.setLevel(config.log_level)
+        self.logger.setLevel(settings.LOG_LEVEL)
 
         self.logger.info("startup")
         self.driver = None
@@ -117,24 +72,13 @@ class Session:
         self.startup_time = arrow.now()
         self.reset_time = None
 
-        self.url = config.url
-        self.profile = Profile(
-            config.profile_name,
-            config.profile_dir,
-            config.profile_create_timeout,
-            config.profile_stabilize_time,
-            logger=self.logger,
-        )
-        self.cert_file = config.cert
-        self.key_file = config.key
-        self.profile.AddCert(config.cert, config.key)
-        self.debug = config.debug
-        self.api_key = config.api_key
+        self.profile = Profile(logger=logger)
+        self.profile.AddCert(settings.CLIENT_CERT, settings.CLIENT_KEY)
 
     def _load_driver(self):
         if not self.driver:
             self.firefox_options = webdriver.FirefoxOptions()
-            self.firefox_options.profile = FirefoxProfile(self.profile.dir)
+            self.firefox_options.profile = FirefoxProfile(settings.PROFILE_DIR)
             self.firefox_options.profile.set_preference("security.default_personal_cert", "Select Automatically")
             self.driver = webdriver.Firefox(options=self.firefox_options)
 
@@ -233,7 +177,7 @@ class Session:
     @validate_call
     def _get(self, path: str):
         self._load_driver()
-        url = self.url + path
+        url = settings.CALDAV_URL + path
         self.logger.info(f"GET {url}")
         try:
             self.driver.get(url)
@@ -621,14 +565,14 @@ class Session:
             login = f"failed: {repr(e)}"
 
         return dict(
-            name="baikalctl",
+            name="bcc",
             version=__version__,
             driver=repr(self.driver),
-            url=self.url,
+            url=settings.CALDAV_URL,
             uptime=self.startup_time.humanize(),
             reset=self.reset_time.humanize() if self.reset_time else "never",
-            profile_dir=self.profile.name if self.profile else None,
+            profile_dir=settings.PROFILE_NAME if self.profile else None,
             certificates=repr(list(self.profile.ListCerts().keys()) if self.profile else None),
-            certificate_loaded=self.cert_file,
+            certificate_loaded=settings.CLIENT_CERT,
             login=login,
         )

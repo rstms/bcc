@@ -1,15 +1,13 @@
-# baikalctl API client
+# bcc API client
 
-import re
-from pathlib import Path
 from typing import Dict, List
 
 import requests
 from pydantic import validate_call
 from requests.exceptions import JSONDecodeError
 
+from . import settings
 from .models import (
-    Account,
     AddBookRequest,
     AddBookResponse,
     AddUserRequest,
@@ -24,40 +22,32 @@ from .models import (
 )
 
 
-def validate_pem_file(filename: str, pem_type: str):
-    with Path(filename).open("r") as ifp:
-        content = ifp.read()
-        if "-----BEGIN" not in content or "-----END" not in content:
-            raise ValueError(f"{filename} is not PEM format")
-        if "cert" in pem_type:
-            if not re.match(".*-----BEGIN CERTIFICATE-----.*", content, re.MULTILINE):
-                raise ValueError(f"{filename} is not a certificate")
-        elif "key" in pem_type:
-            if "pub" in pem_type:
-                if not re.match(".*-----BEGIN .*PUBLIC KEY-----.*", content, re.MULTILINE):
-                    raise ValueError(f"{filename} is not a public key")
-            elif "priv" in pem_type:
-                if not re.match(".*-----BEGIN .*PRIVATE KEY-----.*", content, re.MULTILINE):
-                    raise ValueError(f"{filename} is not a private key")
-            else:
-                if not re.match(".*-----BEGIN .* KEY-----.*", content, re.MULTILINE):
-                    raise ValueError(f"{filename} is not a key")
-
-
 class API:
     @validate_call
     def __init__(
-        self, url: str, admin_username: str, admin_password: str, client_cert: str, client_key: str, api_key: str
+        self,
+        *,
+        url: str | None = None,
+        admin_username: str | None = None,
+        admin_password: str | None = None,
+        client_cert: str | None = None,
+        client_key: str | None = None,
+        api_key: str | None = None,
     ):
-        self.url = url.strip("/")
+        self.url = settings.get(url, "CALDAV_URL").strip("/")
+
         self.session = requests.Session()
-        validate_pem_file(client_cert, "certificate")
-        validate_pem_file(client_key, "private key")
-        self.session.cert = (client_cert, client_key)
-        account = Account(username=admin_username, password=admin_password)
-        self.session.headers["X-Admin-Username"] = account.username
-        self.session.headers["X-Admin-Password"] = account.password
-        self.session.headers["X-Api-Key"] = api_key
+        self.session.cert = (
+            settings.get(client_cert, "CLIENT_CERT", settings.VALIDATE_PEM_CERTIFICATE_FILE),
+            settings.get(client_key, "CLIENT_KEY", settings.VALIDATE_PEM_PRIVATE_KEY_FILE),
+        )
+        self.session.headers["X-Admin-Username"] = settings.get(admin_username, "ADMIN_USERNAME")
+        self.session.headers["X-Admin-Password"] = settings.get(
+            admin_password, "ADMIN_PASSWORD", settings.DECODE_SECRET, settings.OPTIONAL_READ_FILE
+        )
+        self.session.headers["X-Api-Key"] = settings.get(
+            api_key, "API_KEY", settings.DECODE_SECRET, settings.OPTIONAL_READ_FILE
+        )
 
     def _parse_response(self, response):
         if response.ok:

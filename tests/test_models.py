@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from baikalctl.models import (
+from bcc.models import (
     Account,
     AddBookRequest,
     AddUserRequest,

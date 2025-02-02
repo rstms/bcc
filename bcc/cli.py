@@ -1,13 +1,14 @@
-"""baikalctl client cli"""
+"""bcc cli"""
 
 import json
 import logging
-import socket
 import sys
 from collections.abc import Iterable
 
 import click
+import uvicorn
 
+from . import settings
 from .client import API
 from .exception_handler import ExceptionHandler
 from .shell import _shell_completion
@@ -22,11 +23,6 @@ def _ehandler(ctx, option, debug):
     global ehandler
     ehandler = ExceptionHandler(debug)
     return debug
-
-
-DEFAULT_URL = "https://mabctl." + ".".join(socket.getfqdn().split(".")[1:]) + "/baikalctl"
-DEFAULT_CERT = "/etc/ssl/client.pem"
-DEFAULT_KEY = "/etc/ssl/client.key"
 
 
 def render(obj):
@@ -45,14 +41,13 @@ def output(obj):
 @click.group("bcc")
 @click.version_option(message=header)
 @click.option("-d", "--debug", is_eager=True, envvar="DEBUG", is_flag=True, callback=_ehandler, help="debug mode")
-@click.option("-U", "--username", envvar="BCC_USERNAME", default="admin", help="username (default: admin)")
-@click.option("-P", "--password", envvar="BCC_PASSWORD", help="password")
-@click.option("-u", "--url", envvar="BCC_URL", default=DEFAULT_URL, help="baikalctl server URL")
-@click.option("-l", "--log-level", envvar="LOG_LEVEL", default="WARNING", help="server log level (default: WARNING)")
-@click.option("--cert", envvar="BCC_CERT", default=DEFAULT_CERT, help="cient certificate file")
-@click.option("--key", envvar="BCC_KEY", default=DEFAULT_KEY, help="client certificate key file")
-@click.option("--api-key", envvar="BCC_API_KEY", help="baikalctl API key")
-@click.option("--show-config", is_flag=True)
+@click.option("-u", "--username", help="username (default: admin)")
+@click.option("-p", "--password", help="password")
+@click.option("-U", "--url", help="caldav server URL")
+@click.option("-l", "--log-level", help="server log level (default: WARNING)")
+@click.option("-c", "--cert", help="cient certificate file")
+@click.option("-k", "--key", help="client certificate key file")
+@click.option("-a", "--api-key", help="bcc API key")
 @click.option(
     "--shell-completion",
     is_flag=False,
@@ -61,33 +56,39 @@ def output(obj):
     help="configure shell completion",
 )
 @click.pass_context
-def bcc(
-    ctx,
-    debug,
-    username,
-    password,
-    url,
-    cert,
-    key,
-    api_key,
-    log_level,
-    show_config,
-    shell_completion,
-):
-    """bcc - baikal controller client""" ""
+def bcc(ctx, debug, username, password, url, cert, key, api_key, log_level, shell_completion):
+    """bcc - bcc control console"""
 
-    if show_config:
-        click.echo(f"url: {url}")
-        click.echo(f"username: {username}")
-        click.echo(f"password: {'*'*len(password) if password else None}")
-        click.echo(f"cert: {cert}")
-        click.echo(f"key: {key}")
-        click.echo(f"log_level: {log_level}")
-        click.echo(f"debug: {debug}")
-        sys.exit(0)
+    if debug is not None:
+        settings.DEBUG = True
+    if username is not None:
+        settings.USERNAME = username
+    if password is not None:
+        settings.PASSWORD = password
+    if url is not None:
+        settings.CALDAV_URL = url
+    if cert is not None:
+        settings.CLIENT_CERT = cert
+    if key is not None:
+        settings.CLIENT_KEY = key
+    if api_key is not None:
+        settings.API_KEY = api_key
+    if log_level is not None:
+        settings.LOG_LEVEL = log_level
 
     logging.basicConfig(level=log_level)
-    ctx.obj = API(url, username, password, cert, key, api_key)
+
+    if ctx.invoked_subcommand not in ["config", "server"]:
+        ctx.obj = API()
+
+
+@bcc.command
+@click.pass_context
+@click.option("--insecure", is_flag=True)
+def config(ctx, insecure):
+    """show configuration"""
+    click.echo(settings.dotenv(reveal_passwords=insecure))
+    sys.exit(0)
 
 
 @bcc.command
@@ -182,6 +183,18 @@ def shutdown(ctx):
 def uptime(ctx):
     """server uptime"""
     output(ctx.uptime())
+
+
+@bcc.command
+@click.pass_context
+def server(ctx):
+    """API server"""
+    uvicorn.run(
+        "bcc:app",
+        host=settings.ADDRESS,
+        port=settings.PORT,
+        log_level=settings.LOG_LEVEL.lower(),
+    )
 
 
 if __name__ == "__main__":

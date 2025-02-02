@@ -9,11 +9,10 @@ from threading import Thread
 
 import pytest
 
-from baikalctl import settings
-from baikalctl.app import app
-from baikalctl.browser import SessionConfig
-from baikalctl.client import API
-from baikalctl.models import Book, User
+from bcc import settings
+from bcc.app import app
+from bcc.client import API
+from bcc.models import Book, User
 
 LISTEN_TIMEOUT = 5
 
@@ -47,34 +46,20 @@ def headers():
 
 class TestServer:
     def __init__(self, app):
+        settings.ADDRESS = "127.0.0.1"
+        settings.PORT = TEST_PORT
+        settings.LOG_LEVEL = "DEBUG"
         self.app = app
-        self.host = "127.0.0.1"
-        self.port = TEST_PORT
-        self.log_level = "DEBUG"
         self._server = None
-
-        SessionConfig(
-            url=TEST_CALDAV_URL,
-            cert=TEST_CLIENT_CERT,
-            key=TEST_CLIENT_KEY,
-            profile_name=settings.PROFILE_NAME,
-            profile_dir=settings.PROFILE_DIR,
-            profile_create_timeout=settings.PROFILE_CREATE_TIMEOUT,
-            profile_stabilize_time=settings.PROFILE_STABILIZE_TIME,
-            log_level="DEBUG",
-            logger="uvicorn",
-            debug=True,
-            api_key=TEST_API_KEY,
-        )
 
     def run(self):
         import uvicorn
 
         config = uvicorn.Config(
             app=self.app,
-            host=self.host,
-            port=self.port,
-            log_level=self.log_level.lower(),
+            host=settings.ADDRESS,
+            port=settings.PORT,
+            log_level=settings.log_level.lower(),
             loop="asyncio",
             lifespan="on",
         )

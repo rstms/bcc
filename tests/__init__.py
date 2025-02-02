@@ -1,1 +1,1 @@
-"""Unit test package for baikalctl."""
+"""Unit test package for bcc"""
